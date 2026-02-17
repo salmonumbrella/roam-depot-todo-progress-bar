@@ -36,7 +36,7 @@
   "Returns true if block-string is a pure block reference ((uid))."
   [block-string]
   (when block-string
-    (boolean (re-matches #"^\s*\(\([a-zA-Z0-9_-]{9}\)\)\s*$" block-string))))
+    (boolean (re-matches #"^\s*\(\([a-zA-Z0-9_-]+\)\)\s*$" block-string))))
 
 (defn count-status-from-ref [ref]
   (let [title (:node/title ref)]
@@ -90,6 +90,7 @@
           matches (re-find pattern block-string)]
       (second matches))))
 
+;; Render-string positional args: style, status-text, show-percent, exclude-blockrefs
 (defn format-render-string [current-string style status-text show-percent exclude-blockrefs]
   (if-let [code-block-uid (get-component-code-uid current-string)]
     (let [pattern #"\{\{(?:\[\[)?roam/render(?:\]\])?: *\(\([^)]+\)\).*?\}\}"
@@ -248,8 +249,20 @@
       false)))
 
 (defn main [{:keys [block-uid]} & args]
-  (r/with-let [*settings-open? (r/atom false)]
-    (if-not (extension-running?)
+  (r/with-let [*settings-open? (r/atom false)
+               *ext-ready? (r/atom (extension-running?))
+               check-interval (when-not (extension-running?)
+                                (js/setInterval
+                                 (fn []
+                                   (when (extension-running?)
+                                     (reset! *ext-ready? true)))
+                                 500))
+               _ (js/setTimeout
+                  (fn []
+                    (when check-interval
+                      (js/clearInterval check-interval)))
+                  10000)]
+    (if-not @*ext-ready?
       [:div [:strong {:style {:color "red"}}
              "Extension not installed. Please install Todo Progress Bar from Roam Depot."]]
       (let [style (or (first args) "horizontal")
@@ -273,4 +286,7 @@
                                    #(reset! *settings-open? false)])}
           (if (= style "radial")
             [circle-progress-bar (:done tasks) total status-text show-percent #(reset! *settings-open? true)]
-            [horizontal-progress-bar (:done tasks) total status-text show-percent #(reset! *settings-open? true)])]]))))
+            [horizontal-progress-bar (:done tasks) total status-text show-percent #(reset! *settings-open? true)])]]))
+    (finally
+      (when check-interval
+        (js/clearInterval check-interval))))))

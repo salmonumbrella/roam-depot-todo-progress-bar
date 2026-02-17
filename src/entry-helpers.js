@@ -147,25 +147,16 @@ async function ensureMainRenderBlocks({
       order: 0,
       string: `{{[[roam/render]]:((${codeBlockUID}))}}`,
     });
-
-    await createBlockIfMissing({
-      parentUID: titleblockUID,
-      uid: CODE_HEADER_UID,
-      order: "last",
-      string: "code",
-      open: false,
-    });
   }
 
-  if (!blockExists(codeBlockUID)) {
-    await createBlockIfMissing({
-      parentUID: titleblockUID,
-      uid: CODE_HEADER_UID,
-      order: "last",
-      string: "code",
-      open: false,
-    });
-  }
+  // Always ensure the code header exists (covers fresh install and repair).
+  await createBlockIfMissing({
+    parentUID: titleblockUID,
+    uid: CODE_HEADER_UID,
+    order: "last",
+    string: "code",
+    open: false,
+  });
 
   await ensureCodeBlock(CODE_HEADER_UID, codeBlockUID);
 }
@@ -219,17 +210,3 @@ export async function toggleStrikethroughCSS(state) {
   }
 }
 
-// Legacy exports kept for compatibility with older code paths.
-export async function updateCodeBlock(codeBlockUID) {
-  await ensureCodeBlock(CODE_HEADER_UID, codeBlockUID);
-  return true;
-}
-
-export async function updateCSSBlock(cssBlockUID) {
-  await ensureCSSBlock("todo-progress-css-parent", cssBlockUID, componentCSSFile);
-  return true;
-}
-
-export async function toggleRenderComponent() {
-  return false;
-}
